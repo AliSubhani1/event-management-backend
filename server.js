@@ -1,11 +1,13 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Event = require("./models/eventModel");
+const cors = require("cors");
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cors());
 
 app.get("/", (req, res) => {
   res.send("Hello World");
@@ -44,7 +46,7 @@ app.post("/events", async (req, res) => {
 
 app.get("/events", async (req, res) => {
   try {
-    const events = await Event.find({});
+    const events = await Event.find({}).sort({ createdAt: -1 });
     res.status(200).json(events);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -68,17 +70,21 @@ app.get("/events/:id", async (req, res) => {
 app.put("/events/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const event = await Event.findByIdAndUpdate(id, req.body);
 
-    // Can not find product in database
+    const { _id, ...updateData } = req.body;
+
+    const event = await Event.findByIdAndUpdate(id, updateData, {
+      new: true, // Return the updated document
+      runValidators: true, // Ensure schema validation
+    });
+
     if (!event) {
       return res
         .status(404)
-        .json({ message: `Can not find event by id ${id}` });
+        .json({ message: `Cannot find event with id ${id}` });
     }
-    const updatedEvent = await Event.findById(id);
 
-    res.status(200).json(updatedEvent);
+    res.status(200).json(event);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
